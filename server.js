@@ -2,84 +2,146 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 require("dotenv").config();
 
 const app = express();
+const PORT = 3000;
 
-// middleware
-app.use(cors());
+// ================= MIDDLEWARE =================
+app.use(cors({
+    origin: true,
+    credentials: true
+}));
+
 app.use(express.json());
+app.use(cookieParser());
 
-// connect MongoDB
+// DEBUG
+app.use((req, res, next) => {
+    console.log("HIT:", req.method, req.url);
+    next();
+});
+
+// ================= DB =================
 mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log("MongoDB local connected"))
-    .catch(err => console.log("MongoDB error:", err));
+    .then(() => console.log("MongoDB connected"))
+    .catch(err => console.log(err));
 
-// import model
+// ================= MODEL =================
 const User = require("./models/User");
 
-// test route
+// ================= ROOT =================
 app.get("/", (req, res) => {
-    res.send("Server Hidup + Connect MongoDB");
+    res.send("JWT ADVANCED READY");
 });
 
 // ================= REGISTER =================
 app.post("/api/register", async (req, res) => {
-    try {
-        const { username, password } = req.body;
+    const { username, password } = req.body;
 
-        if (!username || !password) {
-            return res.status(400).json({ message: "Username & password wajib diisi" });
-        }
+    const exist = await User.findOne({ username });
+    if (exist) return res.status(400).json({ message: "Username dipakai" });
 
-        const existingUser = await User.findOne({ username });
-        if (existingUser) {
-            return res.status(400).json({ message: "Username sudah dipakai" });
-        }
+    const hashed = await bcrypt.hash(password, 10);
 
-        // HASH PASSWORD
-        const hashedPassword = await bcrypt.hash(password, 10);
+    const user = new User({ username, password: hashed });
+    await user.save();
 
-        const user = new User({
-            username,
-            password: hashedPassword
-        });
-
-        await user.save();
-
-        res.json({ message: "User berhasil dibuat" });
-
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    res.json({ message: "Register sukses" });
 });
 
-// ================= LOGIN =================
+// ================= LOGIN (ACCESS + REFRESH TOKEN) =================
 app.post("/api/login", async (req, res) => {
+    const { username, password } = req.body;
+
+    const user = await User.findOne({ username });
+    if (!user) return res.status(400).json({ message: "User tidak ditemukan" });
+
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(400).json({ message: "Password salah" });
+
+    // 🔵 ACCESS TOKEN (cepat expired)
+    const accessToken = jwt.sign(
+        { id: user._id, username: user.username },
+        process.env.ACCESS_SECRET || "accesssecret",
+        { expiresIn: "15m" }
+    );
+
+    // 🟢 REFRESH TOKEN (lama expired)
+    const refreshToken = jwt.sign(
+        { id: user._id },
+        process.env.REFRESH_SECRET || "refreshsecret",
+        { expiresIn: "7d" }
+    );
+
+    // simpan refresh token di cookie
+    res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: false
+    });
+
+    res.json({
+        message: "Login sukses",
+        accessToken
+    });
+});
+
+// ================= REFRESH TOKEN =================
+app.post("/api/refresh", (req, res) => {
+    const token = req.cookies.refreshToken;
+
+    if (!token) return res.status(401).json({ message: "No refresh token" });
+
     try {
-        const { username, password } = req.body;
+        const decoded = jwt.verify(token, process.env.REFRESH_SECRET || "refreshsecret");
 
-        const user = await User.findOne({ username });
+        const newAccessToken = jwt.sign(
+            { id: decoded.id },
+            process.env.ACCESS_SECRET || "accesssecret",
+            { expiresIn: "15m" }
+        );
 
-        if (!user) {
-            return res.status(400).json({ message: "User tidak ditemukan" });
-        }
-
-        // COMPARE PASSWORD
-        const isMatch = await bcrypt.compare(password, user.password);
-
-        if (!isMatch) {
-            return res.status(400).json({ message: "Password salah" });
-        }
-
-        res.json({ message: "Login berhasil" });
+        res.json({ accessToken: newAccessToken });
 
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(401).json({ message: "Refresh token invalid" });
     }
 });
 
-// start server
-app.listen(3000, () => {
-    console.log("Server berjalan di http://localhost:3000");
+// ================= LOGOUT =================
+app.post("/api/logout", (req, res) => {
+    res.clearCookie("refreshToken");
+    res.json({ message: "Logout berhasil" });
+});
+
+// ================= AUTH MIDDLEWARE =================
+function auth(req, res, next) {
+    const header = req.headers.authorization;
+
+    if (!header) return res.status(401).json({ message: "No token" });
+
+    const token = header.split(" ")[1];
+
+    try {
+        const decoded = jwt.verify(token, process.env.ACCESS_SECRET || "accesssecret");
+        req.user = decoded;
+        next();
+    } catch (err) {
+        res.status(401).json({ message: "Token invalid / expired" });
+    }
+}
+
+// ================= PROFILE =================
+app.get("/api/profile", auth, (req, res) => {
+    res.json({
+        message: "Profile akses sukses",
+        user: req.user
+    });
+});
+
+// ================= START =================
+app.listen(PORT, () => {
+    console.log(`SERVER RUN http://localhost:${PORT}`);
 });
