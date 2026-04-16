@@ -14,7 +14,6 @@ app.use(cors({
     origin: true,
     credentials: true
 }));
-
 app.use(express.json());
 app.use(cookieParser());
 
@@ -24,82 +23,104 @@ app.use((req, res, next) => {
     next();
 });
 
-// ================= DB =================
+// ================= CONNECT DB =================
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("MongoDB connected"))
-    .catch(err => console.log(err));
+    .catch(err => console.log("MongoDB error:", err));
 
 // ================= MODEL =================
 const User = require("./models/User");
 
 // ================= ROOT =================
 app.get("/", (req, res) => {
-    res.send("JWT ADVANCED READY");
+    res.send("SERVER FINAL READY 🔥");
 });
 
 // ================= REGISTER =================
 app.post("/api/register", async (req, res) => {
-    const { username, password } = req.body;
+    try {
+        const { username, password } = req.body;
 
-    const exist = await User.findOne({ username });
-    if (exist) return res.status(400).json({ message: "Username dipakai" });
+        if (!username || !password) {
+            return res.status(400).json({ message: "Username & password wajib diisi" });
+        }
 
-    const hashed = await bcrypt.hash(password, 10);
+        const exist = await User.findOne({ username });
+        if (exist) {
+            return res.status(400).json({ message: "Username sudah dipakai" });
+        }
 
-    const user = new User({ username, password: hashed });
-    await user.save();
+        const hashed = await bcrypt.hash(password, 10);
 
-    res.json({ message: "Register sukses" });
+        const user = new User({
+            username,
+            password: hashed
+        });
+
+        await user.save();
+
+        res.json({ message: "Register berhasil" });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// ================= LOGIN (ACCESS + REFRESH TOKEN) =================
+// ================= LOGIN =================
 app.post("/api/login", async (req, res) => {
-    const { username, password } = req.body;
+    try {
+        const { username, password } = req.body;
 
-    const user = await User.findOne({ username });
-    if (!user) return res.status(400).json({ message: "User tidak ditemukan" });
+        const user = await User.findOne({ username });
+        if (!user) return res.status(400).json({ message: "User tidak ditemukan" });
 
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(400).json({ message: "Password salah" });
+        const match = await bcrypt.compare(password, user.password);
+        if (!match) return res.status(400).json({ message: "Password salah" });
 
-    // 🔵 ACCESS TOKEN (cepat expired)
-    const accessToken = jwt.sign(
-        { id: user._id, username: user.username },
-        process.env.ACCESS_SECRET || "accesssecret",
-        { expiresIn: "15m" }
-    );
+        // ACCESS TOKEN
+        const accessToken = jwt.sign(
+            {
+                id: user._id,
+                username: user.username,
+                role: user.role
+            },
+            process.env.ACCESS_SECRET,
+            { expiresIn: "15m" }
+        );
 
-    // 🟢 REFRESH TOKEN (lama expired)
-    const refreshToken = jwt.sign(
-        { id: user._id },
-        process.env.REFRESH_SECRET || "refreshsecret",
-        { expiresIn: "7d" }
-    );
+        // REFRESH TOKEN
+        const refreshToken = jwt.sign(
+            { id: user._id },
+            process.env.REFRESH_SECRET,
+            { expiresIn: "7d" }
+        );
 
-    // simpan refresh token di cookie
-    res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: false
-    });
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true
+        });
 
-    res.json({
-        message: "Login sukses",
-        accessToken
-    });
+        res.json({
+            message: "Login berhasil",
+            accessToken
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// ================= REFRESH TOKEN =================
+// ================= REFRESH =================
 app.post("/api/refresh", (req, res) => {
     const token = req.cookies.refreshToken;
 
     if (!token) return res.status(401).json({ message: "No refresh token" });
 
     try {
-        const decoded = jwt.verify(token, process.env.REFRESH_SECRET || "refreshsecret");
+        const decoded = jwt.verify(token, process.env.REFRESH_SECRET);
 
         const newAccessToken = jwt.sign(
             { id: decoded.id },
-            process.env.ACCESS_SECRET || "accesssecret",
+            process.env.ACCESS_SECRET,
             { expiresIn: "15m" }
         );
 
@@ -116,7 +137,7 @@ app.post("/api/logout", (req, res) => {
     res.json({ message: "Logout berhasil" });
 });
 
-// ================= AUTH MIDDLEWARE =================
+// ================= AUTH =================
 function auth(req, res, next) {
     const header = req.headers.authorization;
 
@@ -125,7 +146,7 @@ function auth(req, res, next) {
     const token = header.split(" ")[1];
 
     try {
-        const decoded = jwt.verify(token, process.env.ACCESS_SECRET || "accesssecret");
+        const decoded = jwt.verify(token, process.env.ACCESS_SECRET);
         req.user = decoded;
         next();
     } catch (err) {
@@ -133,15 +154,49 @@ function auth(req, res, next) {
     }
 }
 
+// ================= ADMIN CHECK =================
+function isAdmin(req, res, next) {
+    if (req.user.role !== "admin") {
+        return res.status(403).json({ message: "Bukan admin" });
+    }
+    next();
+}
+
 // ================= PROFILE =================
 app.get("/api/profile", auth, (req, res) => {
     res.json({
-        message: "Profile akses sukses",
+        message: "Profile berhasil",
         user: req.user
     });
 });
 
+// ================= ADMIN ROUTE =================
+app.get("/api/admin", auth, isAdmin, (req, res) => {
+    res.json({
+        message: "Selamat datang admin 🔥"
+    });
+});
+
+// ================= MAKE ADMIN =================
+app.post("/api/make-admin", async (req, res) => {
+    const { username } = req.body;
+
+    const user = await User.findOne({ username });
+    if (!user) return res.status(404).json({ message: "User tidak ada" });
+
+    user.role = "admin";
+    await user.save();
+
+    res.json({ message: "Sekarang admin 🔥" });
+});
+
+// ================= LIHAT SEMUA USER =================
+app.get("/api/users", async (req, res) => {
+    const users = await User.find();
+    res.json(users);
+});
+
 // ================= START =================
 app.listen(PORT, () => {
-    console.log(`SERVER RUN http://localhost:${PORT}`);
+    console.log(`🔥 SERVER JALAN DI http://localhost:${PORT}`);
 });
