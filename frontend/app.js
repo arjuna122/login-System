@@ -9,29 +9,42 @@ function showRegister() {
   window.location.href = "register.html";
 }
 
+function goDashboard() {
+  window.location.href = "dashboard.html";
+}
+
 // ================= LOGIN =================
 async function login() {
   try {
     const username = document.getElementById("username").value;
     const password = document.getElementById("password").value;
 
+    if (!username || !password) {
+      document.getElementById("msg").innerText = "Isi semua field";
+      return;
+    }
+
     const res = await fetch(`${API}/api/login`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({ username, password })
     });
 
     const data = await res.json();
 
-    if (data.token) {
-      localStorage.setItem("token", data.token);
-      window.location.href = "dashboard.html";
-    } else {
+    if (!res.ok) {
       document.getElementById("msg").innerText = data.message;
+      return;
     }
 
+    localStorage.setItem("token", data.token);
+    goDashboard();
+
   } catch (err) {
-    document.getElementById("msg").innerText = "Server error";
+    console.error(err);
+    document.getElementById("msg").innerText = "Server tidak terhubung";
   }
 }
 
@@ -41,58 +54,85 @@ async function register() {
     const username = document.getElementById("rusername").value;
     const password = document.getElementById("rpassword").value;
 
+    if (!username || !password) {
+      document.getElementById("rmsg").innerText = "Isi semua field";
+      return;
+    }
+
     const res = await fetch(`${API}/api/register`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({ username, password })
     });
 
     const data = await res.json();
 
-    if (res.ok) {
-      document.getElementById("rmsg").style.color = "green";
-      document.getElementById("rmsg").innerText = "Register berhasil";
-
-      setTimeout(() => {
-        window.location.href = "login.html";
-      }, 1500);
-
-    } else {
+    if (!res.ok) {
       document.getElementById("rmsg").innerText = data.message;
+      return;
     }
 
+    document.getElementById("rmsg").style.color = "green";
+    document.getElementById("rmsg").innerText = "Register berhasil";
+
+    setTimeout(() => {
+      showLogin();
+    }, 1200);
+
   } catch (err) {
-    document.getElementById("rmsg").innerText = "Server error";
+    console.error(err);
+    document.getElementById("rmsg").innerText = "Server tidak terhubung";
   }
 }
 
-// ================= POSTS =================
+// ================= LOAD POSTS =================
 async function loadPosts() {
-  const res = await fetch(`${API}/api/posts`);
-  const data = await res.json();
+  try {
+    const token = localStorage.getItem("token");
 
-  let html = "";
+    const res = await fetch(`${API}/api/posts`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: token ? `Bearer ${token}` : ""
+      }
+    });
 
-  data.forEach(p => {
-    html += `
-      <div class="post">
-        <h3>${p.title}</h3>
-        <p>${p.content}</p>
-        <small>by ${p.author}</small>
-      </div>
-    `;
-  });
+    if (!res.ok) {
+      console.error("Gagal load posts");
+      return;
+    }
 
-  document.getElementById("posts").innerHTML = html;
+    const data = await res.json();
+
+    let html = "";
+
+    data.forEach(post => {
+      html += `
+        <div class="post">
+          <h3>${post.title}</h3>
+          <p>${post.content}</p>
+          <small>by ${post.author}</small>
+        </div>
+      `;
+    });
+
+    document.getElementById("posts").innerHTML = html;
+
+  } catch (err) {
+    console.error("Error load posts:", err);
+  }
 }
 
 // ================= LOGOUT =================
 function logout() {
   localStorage.removeItem("token");
-  window.location.href = "login.html";
+  showLogin();
 }
 
-// ================= FIX GLOBAL SCOPE (PENTING) =================
+// ================= GLOBAL EXPORT (IMPORTANT VERCEL) =================
 window.login = login;
 window.register = register;
 window.loadPosts = loadPosts;
