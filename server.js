@@ -8,8 +8,8 @@ const jwt = require("jsonwebtoken");
 
 const app = express();
 
-// 🔥 PENTING (FIX RAILWAY)
-const PORT = process.env.PORT || 3000;
+// 🔥 PORT RAILWAY
+const PORT = process.env.PORT || 8080;
 
 // ================= MIDDLEWARE =================
 app.use(cors());
@@ -31,18 +31,60 @@ const User = mongoose.model("User", new mongoose.Schema({
     refreshToken: String
 }));
 
-// ================= TOKEN =================
-const generateAccessToken = (user) => {
-    return jwt.sign(
-        { id: user._id, role: user.role },
-        process.env.ACCESS_SECRET,
-        { expiresIn: "1h" }
-    );
-};
+// ================= ROUTES =================
 
-// ================= ROUTE TEST =================
+// ROOT
 app.get("/", (req, res) => {
     res.send("SERVER ONLINE 🚀");
+});
+
+// REGISTER
+app.post("/api/register", async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({ message: "Isi semua field" });
+        }
+
+        const hashed = await bcrypt.hash(password, 10);
+
+        const user = new User({
+            username,
+            password: hashed
+        });
+
+        await user.save();
+
+        res.json({ message: "Register berhasil" });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// LOGIN
+app.post("/api/login", async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        const user = await User.findOne({ username });
+        if (!user) return res.status(400).json({ message: "User tidak ada" });
+
+        const match = await bcrypt.compare(password, user.password);
+        if (!match) return res.status(400).json({ message: "Password salah" });
+
+        const token = jwt.sign(
+            { id: user._id, role: user.role },
+            process.env.ACCESS_SECRET,
+            { expiresIn: "1h" }
+        );
+
+        res.json({ message: "Login berhasil", token });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // ================= START =================
