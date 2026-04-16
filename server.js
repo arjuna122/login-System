@@ -6,6 +6,9 @@ const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
+const User = require("./models/User");
+const Post = require("./models/Post");
+
 const app = express();
 
 // ================= CONFIG =================
@@ -14,37 +17,18 @@ const PORT = process.env.PORT || 8080;
 app.use(cors());
 app.use(express.json());
 
-// ================= CONNECT MONGODB =================
+// ================= CONNECT DB =================
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.log("MongoDB Error:", err));
-
-// ================= USER MODEL =================
-const UserSchema = new mongoose.Schema({
-  username: {
-    type: String,
-    required: true,
-    unique: true,
-  },
-  password: {
-    type: String,
-    required: true,
-  },
-  role: {
-    type: String,
-    default: "user", // user / admin
-  },
-});
-
-const User = mongoose.model("User", UserSchema);
 
 // ================= AUTH MIDDLEWARE =================
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
-    return res.status(401).json({ message: "No token provided" });
+    return res.status(401).json({ message: "No token" });
   }
 
   const token = authHeader.split(" ")[1];
@@ -71,9 +55,9 @@ app.post("/api/register", async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    const existingUser = await User.findOne({ username });
-    if (existingUser) {
-      return res.status(400).json({ message: "User sudah ada" });
+    const exist = await User.findOne({ username });
+    if (exist) {
+      return res.status(400).json({ message: "User already exists" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -85,7 +69,7 @@ app.post("/api/register", async (req, res) => {
 
     await user.save();
 
-    res.json({ message: "Register berhasil" });
+    res.json({ message: "Register success" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -99,13 +83,13 @@ app.post("/api/login", async (req, res) => {
     const user = await User.findOne({ username });
 
     if (!user) {
-      return res.status(400).json({ message: "User tidak ditemukan" });
+      return res.status(400).json({ message: "User not found" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const match = await bcrypt.compare(password, user.password);
 
-    if (!isMatch) {
-      return res.status(400).json({ message: "Password salah" });
+    if (!match) {
+      return res.status(400).json({ message: "Wrong password" });
     }
 
     const token = jwt.sign(
@@ -124,18 +108,101 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// ================= PROFILE (USER LOGIN) =================
+// ================= PROFILE =================
 app.get("/api/profile", verifyToken, (req, res) => {
   res.json({
-    message: "Profile berhasil diakses",
+    message: "Profile success",
     user: req.user,
   });
 });
 
-// ================= ADMIN ROUTE =================
+// ================= ADMIN =================
 app.get("/api/admin/users", verifyToken, verifyAdmin, async (req, res) => {
   const users = await User.find().select("-password");
   res.json(users);
+});
+
+// ================= CRUD POSTS =================
+
+// CREATE
+app.post("/api/posts", verifyToken, async (req, res) => {
+  try {
+    const { title, content } = req.body;
+
+    const post = new Post({
+      title,
+      content,
+      author: req.user.username,
+    });
+
+    await post.save();
+
+    res.json({ message: "Post created", post });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// READ ALL
+app.get("/api/posts", async (req, res) => {
+  const posts = await Post.find().sort({ createdAt: -1 });
+  res.json(posts);
+});
+
+// READ ONE
+app.get("/api/posts/:id", async (req, res) => {
+  const post = await Post.findById(req.params.id);
+
+  if (!post) {
+    return res.status(404).json({ message: "Post not found" });
+  }
+
+  res.json(post);
+});
+
+// UPDATE
+app.put("/api/posts/:id", verifyToken, async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    if (post.author !== req.user.username && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Not allowed" });
+    }
+
+    post.title = req.body.title || post.title;
+    post.content = req.body.content || post.content;
+
+    await post.save();
+
+    res.json({ message: "Post updated", post });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// DELETE
+app.delete("/api/posts/:id", verifyToken, async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    if (post.author !== req.user.username && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Not allowed" });
+    }
+
+    await post.deleteOne();
+
+    res.json({ message: "Post deleted" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // ================= HOME =================
