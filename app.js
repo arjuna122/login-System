@@ -25,9 +25,11 @@ async function login() {
 }
 
 // ================= REGISTER =================
+ console.log("REGISTER CLICKED");
+
 async function register() {
-  const username = document.getElementById("username").value;
-  const password = document.getElementById("password").value;
+  const username = document.getElementById("rusername").value;
+  const password = document.getElementById("rpassword").value;
 
   const res = await fetch(`${API}/api/register`, {
     method: "POST",
