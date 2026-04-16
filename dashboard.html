@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+  <div class="card">
+
+    <h2>Dashboard</h2>
+
+    <button onclick="loadPosts()">Refresh Posts</button>
+    <button onclick="logout()">Logout</button>
+
+    <div id="posts"></div>
+
+  </div>
+</div>
+
+<script src="app.js"></script>
+
+<script>
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    window.location.href = "login.html";
+  }
+
+  loadPosts();
+</script>
+
+</body>
+</html>

@@ -47,19 +47,15 @@ button:hover {
   background: #5a67d8;
 }
 
-.hidden {
-  display: none;
-}
-
-#msg, #rmsg {
-  color: red;
-  margin-top: 10px;
-}
-
 .post {
   background: #f5f5f5;
   padding: 10px;
   margin-top: 10px;
   border-radius: 8px;
   text-align: left;
+}
+
+#msg, #rmsg {
+  color: red;
+  margin-top: 10px;
 }
