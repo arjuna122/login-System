@@ -18,5 +18,16 @@
 </div>
 
 <script src="app.js"></script>
+
+<script>
+    const token = localStorage.getItem("token");
+
+  if (!token) {
+    window.location.href = "login.html";
+  }
+
+  // auto load
+  loadPosts();
+</script>
 </body>
 </html>

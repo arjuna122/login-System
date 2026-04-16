@@ -1,12 +1,15 @@
 const API = "https://login-system-production-3283.up.railway.app";
 
+// ================= LOGIN =================
 async function login() {
   const username = document.getElementById("username").value;
   const password = document.getElementById("password").value;
 
   const res = await fetch(`${API}/api/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json"
+    },
     body: JSON.stringify({ username, password })
   });
 
@@ -16,10 +19,12 @@ async function login() {
     localStorage.setItem("token", data.token);
     window.location.href = "dashboard.html";
   } else {
-    document.getElementById("msg").innerText = data.message;
+    document.getElementById("msg").innerText =
+      data.message || "Login failed";
   }
 }
 
+// ================= LOAD POSTS =================
 async function loadPosts() {
   const res = await fetch(`${API}/api/posts`);
   const data = await res.json();
@@ -39,6 +44,7 @@ async function loadPosts() {
   document.getElementById("posts").innerHTML = html;
 }
 
+// ================= LOGOUT =================
 function logout() {
   localStorage.removeItem("token");
   window.location.href = "login.html";
