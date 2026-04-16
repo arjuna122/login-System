@@ -19,10 +19,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 // ================= CONNECT MONGODB =================
-mongoose.connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
+mongoose.connect(process.env.MONGO_URI)
 .then(() => {
     console.log("🔥 MongoDB connected");
 })
@@ -44,7 +41,7 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 
-// ================= HELPER =================
+// ================= TOKEN =================
 const generateAccessToken = (user) => {
     return jwt.sign(
         { id: user._id, username: user.username, role: user.role },
@@ -97,6 +94,10 @@ app.get("/", (req, res) => {
 app.post("/api/register", async (req, res) => {
     try {
         const { username, password } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({ message: "Isi semua field" });
+        }
 
         const exist = await User.findOne({ username });
         if (exist) return res.status(400).json({ message: "User sudah ada" });
@@ -165,7 +166,7 @@ app.post("/api/make-admin", async (req, res) => {
     res.json({ message: "User jadi admin" });
 });
 
-// ADMIN ROUTE
+// ADMIN
 app.get("/api/admin", verifyToken, isAdmin, (req, res) => {
     res.json({ message: "Selamat datang admin 🔥" });
 });
