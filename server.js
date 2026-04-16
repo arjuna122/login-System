@@ -18,44 +18,63 @@ app.use(express.json());
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Connected"))
-  .catch((err) => console.log(err));
+  .catch((err) => console.log("MongoDB Error:", err));
 
 // ================= USER MODEL =================
 const UserSchema = new mongoose.Schema({
-  username: String,
-  password: String,
+  username: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  password: {
+    type: String,
+    required: true,
+  },
   role: {
     type: String,
-    default: "user",
+    default: "user", // user / admin
   },
 });
 
 const User = mongoose.model("User", UserSchema);
 
-// ================= MIDDLEWARE JWT =================
+// ================= AUTH MIDDLEWARE =================
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
-    return res.status(401).json({ message: "No token" });
+    return res.status(401).json({ message: "No token provided" });
   }
 
   const token = authHeader.split(" ")[1];
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ message: "Invalid token" });
-    }
-
-    req.user = user;
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
     next();
-  });
+  } catch (err) {
+    return res.status(403).json({ message: "Invalid token" });
+  }
+};
+
+// ================= ADMIN MIDDLEWARE =================
+const verifyAdmin = (req, res, next) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Admin only access" });
+  }
+  next();
 };
 
 // ================= REGISTER =================
 app.post("/api/register", async (req, res) => {
   try {
     const { username, password } = req.body;
+
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(400).json({ message: "User sudah ada" });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -90,7 +109,11 @@ app.post("/api/login", async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user._id, username: user.username, role: user.role },
+      {
+        id: user._id,
+        username: user.username,
+        role: user.role,
+      },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
@@ -101,12 +124,18 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// ================= PROTECTED ROUTE =================
+// ================= PROFILE (USER LOGIN) =================
 app.get("/api/profile", verifyToken, (req, res) => {
   res.json({
-    message: "Kamu berhasil akses protected route",
+    message: "Profile berhasil diakses",
     user: req.user,
   });
+});
+
+// ================= ADMIN ROUTE =================
+app.get("/api/admin/users", verifyToken, verifyAdmin, async (req, res) => {
+  const users = await User.find().select("-password");
+  res.json(users);
 });
 
 // ================= HOME =================
