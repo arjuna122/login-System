@@ -8,86 +8,113 @@ const jwt = require("jsonwebtoken");
 
 const app = express();
 
-// 🔥 PORT RAILWAY
+// ================= CONFIG =================
 const PORT = process.env.PORT || 8080;
 
-// ================= MIDDLEWARE =================
 app.use(cors());
 app.use(express.json());
 
-// ================= DEBUG =================
-console.log("ENV CHECK:", process.env.MONGO_URI);
+// ================= CONNECT MONGODB =================
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB Connected"))
+  .catch((err) => console.log(err));
 
-// ================= CONNECT MONGO =================
-mongoose.connect(process.env.MONGO_URI)
-.then(() => console.log("🔥 MongoDB connected"))
-.catch(err => console.log("❌ Mongo ERROR:", err));
-
-// ================= MODEL =================
-const User = mongoose.model("User", new mongoose.Schema({
-    username: String,
-    password: String,
-    role: { type: String, default: "user" },
-    refreshToken: String
-}));
-
-// ================= ROUTES =================
-
-// ROOT
-app.get("/", (req, res) => {
-    res.send("SERVER ONLINE 🚀");
+// ================= USER MODEL =================
+const UserSchema = new mongoose.Schema({
+  username: String,
+  password: String,
+  role: {
+    type: String,
+    default: "user",
+  },
 });
 
-// REGISTER
+const User = mongoose.model("User", UserSchema);
+
+// ================= MIDDLEWARE JWT =================
+const verifyToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(401).json({ message: "No token" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ message: "Invalid token" });
+    }
+
+    req.user = user;
+    next();
+  });
+};
+
+// ================= REGISTER =================
 app.post("/api/register", async (req, res) => {
-    try {
-        const { username, password } = req.body;
+  try {
+    const { username, password } = req.body;
 
-        if (!username || !password) {
-            return res.status(400).json({ message: "Isi semua field" });
-        }
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-        const hashed = await bcrypt.hash(password, 10);
+    const user = new User({
+      username,
+      password: hashedPassword,
+    });
 
-        const user = new User({
-            username,
-            password: hashed
-        });
+    await user.save();
 
-        await user.save();
-
-        res.json({ message: "Register berhasil" });
-
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    res.json({ message: "Register berhasil" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
-// LOGIN
+// ================= LOGIN =================
 app.post("/api/login", async (req, res) => {
-    try {
-        const { username, password } = req.body;
+  try {
+    const { username, password } = req.body;
 
-        const user = await User.findOne({ username });
-        if (!user) return res.status(400).json({ message: "User tidak ada" });
+    const user = await User.findOne({ username });
 
-        const match = await bcrypt.compare(password, user.password);
-        if (!match) return res.status(400).json({ message: "Password salah" });
-
-        const token = jwt.sign(
-            { id: user._id, role: user.role },
-            process.env.ACCESS_SECRET,
-            { expiresIn: "1h" }
-        );
-
-        res.json({ message: "Login berhasil", token });
-
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+    if (!user) {
+      return res.status(400).json({ message: "User tidak ditemukan" });
     }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(400).json({ message: "Password salah" });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, username: user.username, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.json({ token });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
-// ================= START =================
+// ================= PROTECTED ROUTE =================
+app.get("/api/profile", verifyToken, (req, res) => {
+  res.json({
+    message: "Kamu berhasil akses protected route",
+    user: req.user,
+  });
+});
+
+// ================= HOME =================
+app.get("/", (req, res) => {
+  res.send("API jalan 🚀");
+});
+
+// ================= START SERVER =================
 app.listen(PORT, () => {
-    console.log("🔥 SERVER RUNNING ON PORT", PORT);
+  console.log(`Server running on port ${PORT}`);
 });
