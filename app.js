@@ -24,6 +24,35 @@ async function login() {
   }
 }
 
+// ================= REGISTER =================
+async function register() {
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+
+  const res = await fetch(`${API}/api/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await res.json();
+
+  if (res.ok) {
+    document.getElementById("msg").style.color = "green";
+    document.getElementById("msg").innerText =
+      "Register berhasil, redirect ke login...";
+
+    setTimeout(() => {
+      window.location.href = "login.html";
+    }, 1500);
+
+  } else {
+    document.getElementById("msg").innerText = data.message;
+  }
+}
+
 // ================= LOAD POSTS =================
 async function loadPosts() {
   const res = await fetch(`${API}/api/posts`);

@@ -1,24 +1,70 @@
 <!DOCTYPE html>
-<html >
+<html>
 <head>
-    <title>Login</title>
-    <link rel="stylesheet" href="style.css">
+  <title>Login System</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    
-    <div class="container">
-        <div class="card">
-            <h2>Login</h2>
 
-            <input type="text" id="username" placeholder="Username">
-            <input type="password" id="password" placeholder="Password">
+<div class="container">
+  <div class="card">
 
-            <button onclick="login()">Login</button>
-            
-            <p id="msg"></p>
-        </div>
+    <!-- LOGIN -->
+    <div id="loginBox">
+      <h2>Login</h2>
+
+      <input id="username" placeholder="Username">
+      <input id="password" type="password" placeholder="Password">
+
+      <button onclick="login()">Login</button>
+
+      <p id="msg"></p>
+
+      <p onclick="showRegister()" style="cursor:pointer;color:blue;">
+        Belum punya akun? Register
+      </p>
     </div>
 
+    <!-- REGISTER -->
+    <div id="registerBox" class="hidden">
+      <h2>Register</h2>
+
+      <input id="rusername" placeholder="Username">
+      <input id="rpassword" type="password" placeholder="Password">
+
+      <button onclick="register()">Register</button>
+
+      <p id="rmsg"></p>
+
+      <p onclick="showLogin()" style="cursor:pointer;color:blue;">
+        Sudah punya akun? Login
+      </p>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dashboardBox" class="hidden">
+      <h2>Dashboard Posts</h2>
+
+      <button onclick="loadPosts()">Refresh</button>
+      <button onclick="logout()">Logout</button>
+
+      <div id="posts"></div>
+    </div>
+
+  </div>
+</div>
+
 <script src="app.js"></script>
+
+<script>
+  // auto check login
+  if (localStorage.getItem("token")) {
+    showDashboard();
+    loadPosts();
+  } else {
+    showLogin();
+  }
+</script>
+
 </body>
 </html>
