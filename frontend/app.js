@@ -68,22 +68,39 @@ async function register() {
 
 // ================= POSTS =================
 async function loadPosts() {
-  const res = await fetch(`${API}/api/posts`);
-  const data = await res.json();
+  try {
+    const res = await fetch(`${API}/api/posts`);
+    const data = await res.json();
 
-  let html = "";
+    let html = "";
 
-  data.forEach(p => {
-    html += `
-      <div class="post">
-        <h3>${p.title}</h3>
-        <p>${p.content}</p>
-        <small>${p.author}</small>
-      </div>
-    `;
-  });
+    data.forEach(post => {
+      html += `
+        <div class="post">
+          <h3>${post.title}</h3>
+          <p>${post.content}</p>
+          <small>by ${post.author}</small>
+        </div>
+      `;
+    });
 
-  document.getElementById("posts").innerHTML = html;
+    document.getElementById("posts").innerHTML = html;
+
+    // total posts
+    document.getElementById("totalPosts").innerText = data.length;
+
+    // welcome user
+    const token = localStorage.getItem("token");
+
+    if (token) {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      document.getElementById("welcomeText").innerText =
+        `Welcome back, ${payload.username} 👋`;
+    }
+
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 // ================= LOGOUT =================

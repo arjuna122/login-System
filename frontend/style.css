@@ -143,3 +143,56 @@ p[onclick]:hover {
   font-size: 14px;
   margin-top: 10px;
 }
+
+/* DASHBOARD */
+.dashboard {
+  width: 520px;
+  text-align: left;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.logout-btn {
+  width: auto;
+  padding: 10px 18px;
+  background: #ff5a5a;
+  color: white;
+}
+
+.logout-btn:hover {
+  transform: translateY(-2px);
+}
+
+#welcomeText {
+  margin-bottom: 18px;
+  opacity: 0.9;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.stat-box {
+  background: rgba(255,255,255,0.12);
+  padding: 16px;
+  border-radius: 14px;
+  text-align: center;
+}
+
+.stat-box h3 {
+  font-size: 24px;
+  margin-bottom: 6px;
+}
+
+.stat-box span {
+  font-size: 13px;
+  opacity: 0.8;
+}
