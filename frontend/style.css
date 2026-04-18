@@ -6,12 +6,12 @@
 }
 
 body {
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   background: linear-gradient(135deg, #667ee6, #764ba2);
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 body::before,
@@ -195,4 +195,27 @@ p[onclick]:hover {
 .stat-box span {
   font-size: 13px;
   opacity: 0.8;
+}
+
+/* CREATE POST */
+.create-post {
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.create-post textarea {
+  width: 100%;
+  height: 110px;
+  padding: 14px;
+  margin-top: 10px;
+  border-radius: 12px;
+  border: none;
+  resize: none;
+  outline: none;
+  background: rgba(255,255,255,0.15);
+  color: white;
+}
+
+.create-post textarea::placeholder {
+  color: rgba(255,255,255,0.7);
 }

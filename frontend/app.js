@@ -103,6 +103,47 @@ async function loadPosts() {
   }
 }
 
+async function createPost() {
+  try {
+    const title = document.getElementById("postTitle").value;
+    const content = document.getElementById("postContent").value;
+
+    const token = localStorage.getItem("token");
+
+    if (!title || !content) {
+      alert("Isi judul dan isi post");
+      return;
+    }
+
+    const res = await fetch(`${API}/api/posts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        title,
+        content
+      })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      document.getElementById("postTitle").value = "";
+      document.getElementById("postContent").value = "";
+
+      loadPosts();
+    } else {
+      alert(data.message);
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("Gagal membuat post");
+  }
+}
+
 // ================= LOGOUT =================
 function logout() {
   localStorage.removeItem("token");
