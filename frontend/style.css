@@ -5,13 +5,28 @@
   font-family: 'segoe UI', sans-serif;
 }
 
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
 body {
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  margin: 0;
+  height: 100vh;
   background: linear-gradient(135deg, #667ee6, #764ba2);
+  overflow: hidden;
+  position: relative;
+}
+
+body.auth-mode {
+  overflow: hidden;
+}
+
+body.dashboard{
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 body::before,
@@ -40,10 +55,28 @@ body::after {
 .container {
   position: relative;
   z-index: 10;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 15px;
+}
+
+.container.auth-mode {
+  align-items: center;
+  overflow: hidden;
+}
+
+.container.dashboard-mode {
+  align-items: flex-start;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-top: 20px;
 }
 
 .card {
-  width: 350px;
+  width: 100%;
+  max-width: 350px;
   padding: 35px;
   border-radius: 20px;
   backdrop-filter: blur(20px);
@@ -146,8 +179,15 @@ p[onclick]:hover {
 
 /* DASHBOARD */
 .dashboard {
-  width: 520px;
+  width: 100%;
+  max-width: 520px;
   text-align: left;
+
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  padding-right: 8px;
 }
 
 .topbar {
@@ -218,4 +258,27 @@ p[onclick]:hover {
 
 .create-post textarea::placeholder {
   color: rgba(255,255,255,0.7);
+}
+
+/*Smooth hidden scrollbar */
+.dashboard {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.18) transparent;
+}
+
+.dashboard::-webkit-sctrollbar {
+  width: 5px;
+}
+
+.dashboard::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dashboard::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.18);
+  border-radius: 20px;
+}
+
+.dashboard::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.28);
 }

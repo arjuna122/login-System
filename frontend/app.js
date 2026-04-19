@@ -2,12 +2,20 @@ const API = "https://login-system-production-3283.up.railway.app";
 
 // ================= UI CONTROL =================
 function showLogin() {
+  const c = document.querySelector(".container");
+  c.classList.remove("dashboard-mode")
+  c.classList.add("auth-mode");
+
   document.getElementById("loginBox").classList.remove("hidden");
   document.getElementById("registerBox").classList.add("hidden");
   document.getElementById("dashboardBox").classList.add("hidden");
 }
 
 function showRegister() {
+  const c = document.querySelector(".container");
+  c.classList.remove("dashboard-mode");
+  c.classList.add("auth-mode");
+
   document.getElementById("loginBox").classList.add("hidden");
   document.getElementById("registerBox").classList.remove("hidden");
   document.getElementById("dashboardBox").classList.add("hidden");
@@ -157,3 +165,5 @@ window.loadPosts = loadPosts;
 window.logout = logout;
 window.showLogin = showLogin;
 window.showRegister = showRegister;
+
+showLogin();
