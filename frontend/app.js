@@ -33,62 +33,67 @@ function showDashboard() {
 
 // ================= LOGIN =================
 async function login() {
-  const username = document.getElementById("username").value;
-  const password = document.getElementById("password").value;
+  try {
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
 
-  const res = await fetch(API + "/api/login", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      username,
-      password
-    })
-  });
+    const res = await fetch(API + "/api/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ username, password })
+    });
 
-  const data = await res.json();
+    const data = await res.json();
 
-  if (data.token) {
-    localStorage.setItem("token", data.token);
-    showDashboard();
-    loadPosts();
-  } else {
-    document.getElementById("msg").innerText = data.message;
+    if (res.ok && data.token) {
+      localStorage.setItem("token", data.token);
+      showDashboard();
+      loadPosts();
+    } else {
+      document.getElementById("msg").innerText = data.message;
+    }
+
+  } catch (err) {
+    console.error(err);
   }
 }
 
 // ================= REGISTER =================
 async function register() {
-  const username = document.getElementById("rusername").value;
-  const password = document.getElementById("rpassword").value;
+  try {
+    const username = document.getElementById("rusername").value;
+    const password = document.getElementById("rpassword").value;
 
-  const res = await fetch(API + "/api/register", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      username,
-      password
-    })
-  });
+    const res = await fetch(API + "/api/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ username, password })
+    });
 
-  const data = await res.json();
+    const data = await res.json();
 
-  if (res.ok) {
-    document.getElementById("rmsg").style.color = "green";
-    document.getElementById("rmsg").innerText = "Register berhasil";
+    if (res.ok) {
+      document.getElementById("rmsg").style.color = "lightgreen";
+      document.getElementById("rmsg").innerText = "Register berhasil";
 
-    setTimeout(() => {
-      showLogin();
-    }, 1000);
-  } else {
-    document.getElementById("rmsg").innerText = data.message;
+      setTimeout(() => {
+        showLogin();
+      }, 1000);
+
+    } else {
+      document.getElementById("rmsg").innerText = data.message;
+    }
+
+  } catch (err) {
+    console.error(err);
   }
 }
 
-// ================= POSTS =================
+// ================= LOAD POSTS =================
 async function loadPosts() {
   try {
     const res = await fetch(API + "/api/posts");
@@ -124,7 +129,7 @@ async function loadPosts() {
         "<p>" + post.content + "</p>" +
         "<small>by " + post.author + "</small>";
 
-      if (post.author === username) {
+      if (post.author === username || (token && JSON.parse(atob(token.split(".")[1])).role === "admin")) {
         html +=
           '<div class="post-actions">' +
           '<button onclick="editPost(\'' + post._id + '\')">✏️ Edit</button>' +
@@ -147,7 +152,6 @@ async function createPost() {
   try {
     const title = document.getElementById("postTitle").value;
     const content = document.getElementById("postContent").value;
-
     const token = localStorage.getItem("token");
 
     if (!title || !content) {
@@ -161,10 +165,7 @@ async function createPost() {
         "Content-Type": "application/json",
         Authorization: "Bearer " + token
       },
-      body: JSON.stringify({
-        title,
-        content
-      })
+      body: JSON.stringify({ title, content })
     });
 
     const data = await res.json();
@@ -172,7 +173,6 @@ async function createPost() {
     if (res.ok) {
       document.getElementById("postTitle").value = "";
       document.getElementById("postContent").value = "";
-
       loadPosts();
     } else {
       alert(data.message);
@@ -180,17 +180,16 @@ async function createPost() {
 
   } catch (err) {
     console.error(err);
-    alert("Gagal membuat post");
   }
 }
 
-// ================= DELETE =================
+// ================= DELETE POST =================
 async function deletePost(id) {
   try {
-    const token = localStorage.getItem("token");
+    const yes = confirm("Yakin hapus post ini?");
+    if (!yes) return;
 
-    const confirmDelete = confirm("Yakin hapus post ini?");
-    if (!confirmDelete) return;
+    const token = localStorage.getItem("token");
 
     const res = await fetch(API + "/api/posts/" + id, {
       method: "DELETE",
@@ -212,16 +211,16 @@ async function deletePost(id) {
   }
 }
 
-// ================= EDIT =================
+// ================= EDIT POST =================
 async function editPost(id) {
   try {
-    const token = localStorage.getItem("token");
-
     const newTitle = prompt("Edit judul:");
     if (!newTitle) return;
 
     const newContent = prompt("Edit isi post:");
     if (!newContent) return;
+
+    const token = localStorage.getItem("token");
 
     const res = await fetch(API + "/api/posts/" + id, {
       method: "PUT",
@@ -248,7 +247,7 @@ async function editPost(id) {
   }
 }
 
-// ================= ADMIN USERS =================
+// ================= ADMIN PANEL =================
 async function loadUsers() {
   try {
     const token = localStorage.getItem("token");
@@ -259,9 +258,11 @@ async function loadUsers() {
       }
     });
 
-    let data = [];
-    if (res.status !== 204) {
-      data = await res.json();
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.message);
+      return;
     }
 
     let html = "";
@@ -269,8 +270,14 @@ async function loadUsers() {
     for (let i = 0; i < data.length; i++) {
       html +=
         '<div class="post">' +
-        "<p><b>" + data[i].username + "</b> (" + data[i].role + ")</p>" +
-        "</div>";
+        "<p><b>" + data[i].username + "</b> (" + data[i].role + ")</p>";
+
+      if (data[i].role !== "admin") {
+        html +=
+          '<button onclick="deleteUser(\'' + data[i]._id + '\')">Delete</button>';
+      }
+
+      html += "</div>";
     }
 
     document.getElementById("totalUsers").innerText = data.length;
@@ -278,13 +285,47 @@ async function loadUsers() {
 
     document.getElementById("posts").classList.add("hidden");
     document.querySelector(".create-post").classList.add("hidden");
-
     document.getElementById("adminPanel").classList.remove("hidden");
 
   } catch (err) {
     console.error(err);
-    alert("Gagal membuka admin panel");
   }
+}
+
+// ================= DELETE USER =================
+async function deleteUser(id) {
+  try {
+    const yes = confirm("Yakin hapus user ini?");
+    if (!yes) return;
+
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(API + "/api/admin/users/" + id, {
+      method: "DELETE",
+      headers: {
+        Authorization: "Bearer " + token
+      }
+    });
+
+    const data = await res.json();
+    console.log(res.status, data);
+
+    if (res.ok) {
+      loadUsers();
+    } else {
+      alert(data.message);
+    }
+
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+// ================= CLOSE ADMIN =================
+function closeAdmin() {
+  document.getElementById("adminPanel").classList.add("hidden");
+  document.getElementById("posts").classList.remove("hidden");
+  document.querySelector(".create-post").classList.remove("hidden");
 }
 
 // ================= LOGOUT =================
@@ -296,13 +337,18 @@ function logout() {
 // ================= GLOBAL =================
 window.login = login;
 window.register = register;
-window.loadPosts = loadPosts;
-window.logout = logout;
 window.showLogin = showLogin;
 window.showRegister = showRegister;
-window.createPost = createPost;
-window.deletePost = deletePost;
-window.editPost = editPost;
-window.loadUsers = loadUsers;
+window.logout = logout;
 
+window.loadPosts = loadPosts;
+window.createPost = createPost;
+window.editPost = editPost;
+window.deletePost = deletePost;
+
+window.loadUsers = loadUsers;
+window.deleteUser = deleteUser;
+window.closeAdmin = closeAdmin;
+
+// ================= START =================
 showLogin();

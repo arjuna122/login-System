@@ -122,6 +122,15 @@ app.get("/api/admin/users", verifyToken, verifyAdmin, async (req, res) => {
   res.json(users);
 });
 
+app.delete("/api/admin/users/:id", verifyToken, verifyAdmin, async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ message: "User deleted" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // ================= CRUD POSTS =================
 
 // CREATE
