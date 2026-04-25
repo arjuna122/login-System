@@ -77,34 +77,45 @@ async function register() {
 // ================= POSTS =================
 async function loadPosts() {
   try {
-    const res = await fetch(`${API}/api/posts`);
+    const res = await fetch(API + "/api/posts");
     const data = await res.json();
 
-    let html = "";
-
-    data.forEach(post => {
-      html += `
-        <div class="post">
-          <h3>${post.title}</h3>
-          <p>${post.content}</p>
-          <small>by ${post.author}</small>
-        </div>
-      `;
-    });
-
-    document.getElementById("posts").innerHTML = html;
-
-    // total posts
-    document.getElementById("totalPosts").innerText = data.length;
-
-    // welcome user
     const token = localStorage.getItem("token");
+    let username = "";
 
     if (token) {
       const payload = JSON.parse(atob(token.split(".")[1]));
+      username = payload.username;
+
       document.getElementById("welcomeText").innerText =
-        `Welcome back, ${payload.username} 👋`;
+        "Welcome back, " + username + " 👋";
     }
+
+    document.getElementById("totalPosts").innerText = data.length;
+
+    let html = "";
+
+    for (let i = 0; i < data.length; i++) {
+      const post = data[i];
+
+      html +=
+        '<div class="post">' +
+        "<h3>" + post.title + "</h3>" +
+        "<p>" + post.content + "</p>" +
+        "<small>by " + post.author + "</small>";
+
+      if (post.author === username) {
+        html +=
+          '<div class="post-actions">' +
+          '<button onclick="editPost(\'' + post._id + '\')">✏️ Edit</button>' +
+          '<button onclick="deletePost(\'' + post._id + '\')">🗑 Delete</button>' +
+          "</div>";
+      }
+
+      html += "</div>";
+    }
+
+    document.getElementById("posts").innerHTML = html;
 
   } catch (err) {
     console.error(err);
@@ -165,5 +176,69 @@ window.loadPosts = loadPosts;
 window.logout = logout;
 window.showLogin = showLogin;
 window.showRegister = showRegister;
+
+async function deletePost(id) {
+  try {
+    const token = localStorage.getItem("token");
+
+    const confirmDelete = confirm("Yakin hapus post ini?");
+    if (!confirmDelete) return;
+
+    const res = await fetch(API + "/api/posts/" + id, {
+      method: "DELETE",
+      headers: {
+        Authorization: "Bearer " + token
+      }
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      loadPosts();
+    } else {
+      alert(data.message);
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("Gagal hapus post");
+  }
+}
+
+async function editPost(id) {
+  try {
+    const token = localStorage.getItem("token");
+
+    const newTitle = prompt("Edit judul:");
+    if (!newTitle) return;
+
+    const newContent = prompt("Edit isi post:");
+    if (!newContent) return;
+
+    const res = await fetch(API + "/api/posts/" + id, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token
+      },
+      body: JSON.stringify({
+        title: newTitle,
+        content: newContent
+      })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      loadPosts();
+    } else {
+      alert(data.message);
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("Gagal edit post");
+  }
+}
 
 showLogin();
