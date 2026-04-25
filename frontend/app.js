@@ -1,9 +1,9 @@
 const API = "https://login-system-production-3283.up.railway.app";
 
-// ================= UI CONTROL =================
+// ================= UI =================
 function showLogin() {
   const c = document.querySelector(".container");
-  c.classList.remove("dashboard-mode")
+  c.classList.remove("dashboard-mode");
   c.classList.add("auth-mode");
 
   document.getElementById("loginBox").classList.remove("hidden");
@@ -22,6 +22,10 @@ function showRegister() {
 }
 
 function showDashboard() {
+  const c = document.querySelector(".container");
+  c.classList.remove("auth-mode");
+  c.classList.add("dashboard-mode");
+
   document.getElementById("loginBox").classList.add("hidden");
   document.getElementById("registerBox").classList.add("hidden");
   document.getElementById("dashboardBox").classList.remove("hidden");
@@ -32,10 +36,15 @@ async function login() {
   const username = document.getElementById("username").value;
   const password = document.getElementById("password").value;
 
-  const res = await fetch(`${API}/api/login`, {
+  const res = await fetch(API + "/api/login", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password })
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      username,
+      password
+    })
   });
 
   const data = await res.json();
@@ -54,10 +63,15 @@ async function register() {
   const username = document.getElementById("rusername").value;
   const password = document.getElementById("rpassword").value;
 
-  const res = await fetch(`${API}/api/register`, {
+  const res = await fetch(API + "/api/register", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password })
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      username,
+      password
+    })
   });
 
   const data = await res.json();
@@ -83,9 +97,15 @@ async function loadPosts() {
     const token = localStorage.getItem("token");
     let username = "";
 
+    document.getElementById("adminBtn").classList.add("hidden");
+
     if (token) {
       const payload = JSON.parse(atob(token.split(".")[1]));
       username = payload.username;
+
+      if (payload.role === "admin") {
+        document.getElementById("adminBtn").classList.remove("hidden");
+      }
 
       document.getElementById("welcomeText").innerText =
         "Welcome back, " + username + " 👋";
@@ -122,6 +142,7 @@ async function loadPosts() {
   }
 }
 
+// ================= CREATE POST =================
 async function createPost() {
   try {
     const title = document.getElementById("postTitle").value;
@@ -134,11 +155,11 @@ async function createPost() {
       return;
     }
 
-    const res = await fetch(`${API}/api/posts`, {
+    const res = await fetch(API + "/api/posts", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        Authorization: "Bearer " + token
       },
       body: JSON.stringify({
         title,
@@ -163,20 +184,7 @@ async function createPost() {
   }
 }
 
-// ================= LOGOUT =================
-function logout() {
-  localStorage.removeItem("token");
-  showLogin();
-}
-
-// ================= GLOBAL =================
-window.login = login;
-window.register = register;
-window.loadPosts = loadPosts;
-window.logout = logout;
-window.showLogin = showLogin;
-window.showRegister = showRegister;
-
+// ================= DELETE =================
 async function deletePost(id) {
   try {
     const token = localStorage.getItem("token");
@@ -201,10 +209,10 @@ async function deletePost(id) {
 
   } catch (err) {
     console.error(err);
-    alert("Gagal hapus post");
   }
 }
 
+// ================= EDIT =================
 async function editPost(id) {
   try {
     const token = localStorage.getItem("token");
@@ -237,8 +245,64 @@ async function editPost(id) {
 
   } catch (err) {
     console.error(err);
-    alert("Gagal edit post");
   }
 }
+
+// ================= ADMIN USERS =================
+async function loadUsers() {
+  try {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(API + "/api/admin/users", {
+      headers: {
+        Authorization: "Bearer " + token
+      }
+    });
+
+    let data = [];
+    if (res.status !== 204) {
+      data = await res.json();
+    }
+
+    let html = "";
+
+    for (let i = 0; i < data.length; i++) {
+      html +=
+        '<div class="post">' +
+        "<p><b>" + data[i].username + "</b> (" + data[i].role + ")</p>" +
+        "</div>";
+    }
+
+    document.getElementById("totalUsers").innerText = data.length;
+    document.getElementById("usersList").innerHTML = html;
+
+    document.getElementById("posts").classList.add("hidden");
+    document.querySelector(".create-post").classList.add("hidden");
+
+    document.getElementById("adminPanel").classList.remove("hidden");
+
+  } catch (err) {
+    console.error(err);
+    alert("Gagal membuka admin panel");
+  }
+}
+
+// ================= LOGOUT =================
+function logout() {
+  localStorage.removeItem("token");
+  showLogin();
+}
+
+// ================= GLOBAL =================
+window.login = login;
+window.register = register;
+window.loadPosts = loadPosts;
+window.logout = logout;
+window.showLogin = showLogin;
+window.showRegister = showRegister;
+window.createPost = createPost;
+window.deletePost = deletePost;
+window.editPost = editPost;
+window.loadUsers = loadUsers;
 
 showLogin();

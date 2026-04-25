@@ -45,7 +45,11 @@
 
     <div class="topbar">
       <h2>Dashboard</h2>
-      <button class="logout-btn" onclick="logout()">Logout</button>
+
+      <div class="top-actions">
+        <button id="adminBtn" class="hidden" onclick="loadUsers()">Admin</button>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
     </div>
 
     <p id="welcomeText">Welcome Back 👏</p>
@@ -55,33 +59,37 @@
         <h3 id="totalPosts">0</h3>
         <span>Total Posts</span>
       </div>
+
       <div class="stat-box">
         <h3>Online</h3>
         <span>Status</span>
       </div>
     </div>
-    
+
     <button onclick="loadPosts()">Refresh Posts</button>
 
-      <!-- CREATE POST -->
     <div class="create-post">
+      <input id="postTitle" placeholder="Judul Postingan">
 
-      <input
-        id="postTitle"
-        type="text"
-        placeholder="Judul Postingan"
-      />
-
-      <textarea
-        id="postContent"
-        placeholder="Tulis sesuatu..."
-      ></textarea>
+      <textarea id="postContent" placeholder="Tulis sesuatu..."></textarea>
 
       <button onclick="createPost()">Publish Post</button>
-
     </div>
 
     <div id="posts"></div>
+
+    <div id="adminPanel" class="hidden">
+
+      <div class="topbar" style="margin-top: 20px;">
+        <h3>Admin Panel</h3>
+        <button onclick="closeAdmin()">Back</button>
+      </div>
+
+      <p>Total Users: <span id="totalUsers">0</span></p>
+
+      <div id="userList"></div>
+      
+    </div>
 
   </div>
 
